@@ -4,6 +4,8 @@ import torch
 
 from ultralytics import YOLO
 
+from app.utils.commons import preprocess_image
+
 
 class SignDetector:
     """
@@ -33,7 +35,7 @@ class SignDetector:
         """
         self.model = None
         self.detect_threshold = detect_threshold
-        self.device = "mps"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def load(self, model_path: str) -> None:
         """
@@ -59,12 +61,14 @@ class SignDetector:
          Raises:
             - RuntimeError: If the detect method is called before loading the model.
         """
+        preprocessed_img = preprocess_image(image)
+
         if self.model:
             bboxes = []
             scores = []
             labels = []
 
-            results = self.model(image, device=self.device)
+            results = self.model(preprocessed_img, device=self.device)
             detections = results[0].boxes
 
             for detection in detections:
