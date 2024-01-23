@@ -1,10 +1,10 @@
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from app.verifier.model_architecture import SigNet
+from app.engine.verifier.neural_net import SigNet
 
 
 class SignVerifier:

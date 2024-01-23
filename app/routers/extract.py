@@ -5,7 +5,7 @@ import os
 
 from fastapi import FastAPI, APIRouter, File, UploadFile
 
-from app.detector.detector import SignDetector
+from app.engine.detector.detector import SignDetector
 from app.constants.constants import SIGN_DETECTOR_MODEL_PATH
 
 router = APIRouter()
