@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-import torch
+import numpy as np
 from torch import nn
 from abc import ABC, abstractmethod
 import torch.nn.functional as F
@@ -137,7 +137,7 @@ class DnCNN(NNRegressor):
         self.bn.extend([nn.BatchNorm2d(C, C) for _ in range(D)])
         # initialize the weights of the Batch normalization layers
         for i in range(D):
-            nn.init.constant_(self.bn[i].weight.data, 1.25 * torch.sqrt(C))
+            nn.init.constant_(self.bn[i].weight.data, 1.25 * np.sqrt(C))
 
     def forward(self, x):
         D = self.D
