@@ -14,7 +14,7 @@ def preprocess_image(img_array):
     return thresh_img
 
 
-def resize_with_aspect_ratio(img_array, target_width=220, target_height=150):
+def resize_with_aspect_ratio(img_array, target_width, target_height):
     # Get the original dimensions of the image
     original_height, original_width = img_array.shape[:2]
 
@@ -57,7 +57,7 @@ def resize_with_aspect_ratio(img_array, target_width=220, target_height=150):
     return result_image
 
 
-def resize_signature(img_array):
+def resize_signature(img_array, target_height=150, target_width=220):
     resized_images = []
 
     if isinstance(img_array, list) and len(img_array) == 1:
@@ -65,10 +65,10 @@ def resize_signature(img_array):
 
     if isinstance(img_array, list):
         for img in img_array:
-            resized = resize_with_aspect_ratio(img)
+            resized = resize_with_aspect_ratio(img, target_width, target_height)
             resized_images.append(resized)
     else:
-        resized_images.append(resize_with_aspect_ratio(img_array))
+        resized_images.append(resize_with_aspect_ratio(img_array, target_width, target_height))
 
     return resized_images
 
