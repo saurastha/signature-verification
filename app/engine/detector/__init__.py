@@ -1,1 +1,1 @@
-from app.detector.detector import SignDetector
+from app.engine.detector.detector import SignDetector
