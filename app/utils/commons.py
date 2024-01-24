@@ -14,6 +14,28 @@ def preprocess_image(img_array):
     return thresh_img
 
 
+def save_image(img_array, file_name):
+    file_paths = []
+    if isinstance(img_array, list) and len(img_array) == 1:
+        save_path = f"{file_name}_sign.jpg"
+        cv2.imwrite(f"{file_name}_sign.jpg", img_array[0])
+        file_paths.append(save_path)
+        return file_paths
+
+    if isinstance(img_array, list):
+        for i, img in enumerate(img_array):
+            save_path = f"{file_name}_sign_{i}.jpg"
+            cv2.imwrite(f"{file_name}_sign_{i}.jpg", img)
+            file_paths.append(save_path)
+    else:
+        cv2.imwrite(f"{file_name}_sign.jpg", img_array)
+        save_path = f"{file_name}_sign.jpg"
+        cv2.imwrite(f"{file_name}_sign.jpg", img_array[0])
+        file_paths.append(save_path)
+
+    return file_paths
+
+
 def resize_with_aspect_ratio(img_array, target_width, target_height):
     # Get the original dimensions of the image
     original_height, original_width = img_array.shape[:2]
@@ -76,14 +98,10 @@ def resize_signature(img_array, target_height=150, target_width=220):
 def get_image_crops(img_array, bounding_boxes):
     crop_holder = []
 
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    blur = cv2.GaussianBlur(gray, (1, 1), 0)
-    _, binary_image = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-
     for i in range(len(bounding_boxes)):
         bbox = bounding_boxes[i]
         xmin, ymin, xmax, ymax = bbox[0], bbox[1], bbox[2], bbox[3]
-        crop_holder.append(binary_image[ymin:ymax, xmin:xmax])
+        crop_holder.append(img_array[ymin:ymax, xmin:xmax])
 
     return crop_holder
 
