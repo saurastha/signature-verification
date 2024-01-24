@@ -174,4 +174,6 @@ pyrightconfig.json
 
 tests/
 
+app/assets/
+
 
