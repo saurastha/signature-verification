@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from app.engine.verifier.neural_net import SigNet
+from app.models.architectures import SigNet
 
 
 class SignVerifier:

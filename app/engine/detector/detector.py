@@ -61,14 +61,13 @@ class SignDetector:
          Raises:
             - RuntimeError: If the detect method is called before loading the model.
         """
-        preprocessed_img = preprocess_image(image)
 
         if self.model:
             bboxes = []
             scores = []
             labels = []
 
-            results = self.model(preprocessed_img, device=self.device)
+            results = self.model(image, device=self.device)
             detections = results[0].boxes
 
             for detection in detections:

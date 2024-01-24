@@ -45,7 +45,6 @@ class SignCleaner:
         """
         self.model = DnCNN(6)
         self.model.load_state_dict(torch.load(model_path))
-        print(self.model)
 
     def clean(self, image: np.ndarray, threshold: float = 0.8) -> np.ndarray:
         """
