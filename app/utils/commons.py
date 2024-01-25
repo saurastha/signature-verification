@@ -14,6 +14,21 @@ def preprocess_image(img_array):
     return thresh_img
 
 
+def preprocess_signature(sign_array):
+    if len(sign_array.shape) == 3:
+        gray = cv2.cvtColor(sign_array, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, ksize=(1, 1), sigmaX=0)
+        _, binary_image = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
+        resized = resize_signature(binary_image, target_height=150, target_width=220)[0]
+
+        return resized
+    else:
+        resized = resize_signature(sign_array, target_height=150, target_width=220)[0]
+
+        return resized
+
+
 def save_image(img_array, file_name):
     file_paths = []
     if isinstance(img_array, list) and len(img_array) == 1:
