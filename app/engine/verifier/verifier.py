@@ -86,10 +86,11 @@ class SignVerifier:
             features = self.feature_extraction(signatures)
             similarity = F.cosine_similarity(features[0], features[1], dim=0)
             distance = torch.norm(features[0] - features[1]).item()
+            similarity = (1 - (distance / np.sqrt(features.shape[-1]))) * 100
 
             if distance > self.similarity_threshold:
-                return distance, "Forged"
+                return similarity, "Forged"
             else:
-                return distance, "Genuine"
+                return similarity, "Genuine"
         else:
             raise RuntimeError("Model has not been loaded. Please call the 'load' method to load the model.")
