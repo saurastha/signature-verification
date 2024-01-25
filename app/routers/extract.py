@@ -5,15 +5,17 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, APIRouter, File, UploadFile
-from app.utils.commons import preprocess_image, get_image_crops, save_image
+from app.utils.commons import preprocess_image, get_image_crops, save_image, preprocess_signature
 from app.engine.detector.detector import SignDetector
 from app.engine.cleaner.cleaner import SignCleaner
-from app.constants.constants import SIGN_DETECTOR_MODEL_PATH, SIGN_CLEANER_MODEL_PATH
+from app.engine.verifier.verifier import SignVerifier
+from app.constants.constants import SIGN_DETECTOR_MODEL_PATH, SIGN_CLEANER_MODEL_PATH, SIGN_VERIFIER_MODEL_PATH
 
 router = APIRouter()
 
 detector = SignDetector()
 cleaner = SignCleaner()
+verifier = SignVerifier()
 
 save_path = "assets/images"
 
@@ -25,15 +27,17 @@ if not os.path.exists(save_path):
 async def lifespan(app: APIRouter):
     detect_model_path = os.path.join(os.path.dirname(__file__), "..", SIGN_DETECTOR_MODEL_PATH)
     clean_model_path = os.path.join(os.path.dirname(__file__), "..", SIGN_CLEANER_MODEL_PATH)
+    verify_model_path = os.path.join(os.path.dirname(__file__), "..", SIGN_VERIFIER_MODEL_PATH)
     detector.load(detect_model_path)
     cleaner.load(clean_model_path)
+    verifier.load(verify_model_path)
     yield
 
 
 router_app = FastAPI(lifespan=lifespan)
 
 
-@router.post("/")
+@router.post("/extract")
 async def extract_signature(file: UploadFile = File(...), clean: bool = False):
     contents = await file.read()
     np_arr = np.fromstring(contents, np.uint8)
@@ -62,3 +66,21 @@ async def extract_signature(file: UploadFile = File(...), clean: bool = False):
 
     return [{"url": url, "box": bbox, "score": score, "label": label}
             for url, bbox, score, label in zip(image_url, bboxes, scores, labels)]
+
+
+@router.post("/verify")
+async def verify_signature(signature1: UploadFile = File(...), signature2: UploadFile = File(...)):
+    content_1 = await signature1.read()
+    sign_arr_1 = np.fromstring(content_1, np.uint8)
+    sign_1 = cv2.imdecode(sign_arr_1, cv2.IMREAD_COLOR)
+
+    content_2 = await signature2.read()
+    sign_arr_2 = np.fromstring(content_2, np.uint8)
+    sign_2 = cv2.imdecode(sign_arr_2, cv2.IMREAD_COLOR)
+
+    preprocessed_sign_1 = preprocess_signature(sign_1)
+    preprocessed_sign_2 = preprocess_signature(sign_2)
+
+    result = verifier.verify(preprocessed_sign_1, preprocessed_sign_2)
+
+    return {"result": result[1], "similarity": result[0]}
