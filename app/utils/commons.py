@@ -1,8 +1,19 @@
 import cv2
+from typing import Union, List, Tuple
 import matplotlib.pyplot as plt
+import numpy as np
 
 
-def preprocess_image(img_array):
+def preprocess_image(img_array: np.ndarray) -> np.ndarray:
+    """
+    Preprocess the input image by applying thresholding to each channel.
+
+    Parameters:
+        - img_array (np.ndarray): Input image as a NumPy array.
+
+    Returns:
+        - np.ndarray: Preprocessed image with thresholding applied to each channel.
+    """
     threshold_channels = []
 
     for channel in cv2.split(img_array):
@@ -14,7 +25,17 @@ def preprocess_image(img_array):
     return thresh_img
 
 
-def preprocess_signature(sign_array):
+def preprocess_signature(sign_array: np.ndarray) -> np.ndarray:
+    """
+    Preprocess the input signature image by converting it to grayscale,
+    applying Gaussian blur, thresholding, and resizing.
+
+    Parameters:
+        - sign_array (np.ndarray): Input signature image as a NumPy array.
+
+    Returns:
+        - np.ndarray: Preprocessed signature image.
+    """
     if len(sign_array.shape) == 3:
         gray = cv2.cvtColor(sign_array, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, ksize=(1, 1), sigmaX=0)
@@ -29,7 +50,17 @@ def preprocess_signature(sign_array):
         return resized
 
 
-def save_image(img_array, file_name):
+def save_image(img_array: Union[np.ndarray, List[np.ndarray]], file_name: str) -> List[str]:
+    """
+    Save image or list of images to files with appropriate file names.
+
+    Parameters:
+        - img_array (Union[np.ndarray, List[np.ndarray]]): Image or list of images as NumPy arrays.
+        - file_name (str): Base file name for saving images.
+
+    Returns:
+        - List[str]: List of file paths where the images are saved.
+    """
     file_paths = []
     if isinstance(img_array, list) and len(img_array) == 1:
         save_path = f"{file_name}_sign.jpg"
@@ -51,7 +82,18 @@ def save_image(img_array, file_name):
     return file_paths
 
 
-def resize_with_aspect_ratio(img_array, target_width, target_height):
+def resize_with_aspect_ratio(img_array: np.ndarray, target_width: int, target_height: int):
+    """
+    Resize the input image while maintaining its aspect ratio, and pad if necessary.
+
+    Parameters:
+        - img_array (np.ndarray): Input image as a NumPy array.
+        - target_width (int): Target width for resizing.
+        - target_height (int): Target height for resizing.
+
+    Returns:
+        - np.ndarray: Resized and padded image.
+    """
     # Get the original dimensions of the image
     original_height, original_width = img_array.shape[:2]
 
@@ -94,7 +136,20 @@ def resize_with_aspect_ratio(img_array, target_width, target_height):
     return result_image
 
 
-def resize_signature(img_array, target_height=150, target_width=220):
+def resize_signature(img_array: Union[np.ndarray,List[np.ndarray]],
+                     target_height: int = 150,
+                     target_width: int = 220) -> np.ndarray:
+    """
+    Resize the input signature image or list of signature images.
+
+    Parameters:
+        - img_array: (Union[np.ndarray, List[np.ndarray]]): Input signature image or list of signature images.
+        - target_height (int): Target height for resizing (default: 150).
+        - target_width (int): Target width for resizing (default: 220).
+
+    Returns:
+        - List[np.ndarray]: List of resized and padded signature images.
+    """
     resized_images = []
 
     if isinstance(img_array, list) and len(img_array) == 1:
@@ -110,7 +165,17 @@ def resize_signature(img_array, target_height=150, target_width=220):
     return resized_images
 
 
-def get_image_crops(img_array, bounding_boxes):
+def get_image_crops(img_array: np.ndarray, bounding_boxes: List[Tuple[int, int, int, int]]) -> List[np.ndarray]:
+    """
+    Extract image crops specified by the given bounding boxes.
+
+    Parameters:
+        - img_array (np.ndarray): Input image as a NumPy array.
+        - bounding_boxes (List[Tuple[int, int, int, int]]): List of bounding boxes, each represented as (xmin, ymin, xmax, ymax).
+
+    Returns:
+        - List[np.ndarray]: List of image crops.
+    """
     crop_holder = []
 
     for i in range(len(bounding_boxes)):
@@ -121,7 +186,21 @@ def get_image_crops(img_array, bounding_boxes):
     return crop_holder
 
 
-def plot_images(img_array, title: str = "Image Plot", fig_size=(15, 20), nrows=1, ncols=4):
+def plot_images(img_array: Union[np.ndarray, List[np.ndarray]],
+                title: str = "Image Plot",
+                fig_size: Tuple[int, int] = (15, 20),
+                nrows: int = 1,
+                ncols: int = 4):
+    """
+    Plot one or multiple images in a grid.
+
+    Parameters:
+        - img_array (Union[np.ndarray, List[np.ndarray]]): Image or list of images to be plotted.
+        - title (str): Title of the plot (default: "Image Plot").
+        - fig_size (Tuple[int, int]): Size of the figure in inches (default: (15, 20)).
+        - nrows (int): Number of rows in the grid (default: 1).
+        - ncols (int): Number of columns in the grid (default: 4).
+    """
     if isinstance(img_array, list) and len(img_array) == 1:
         img_array = img_array[0]
 
@@ -151,9 +230,28 @@ def plot_images(img_array, title: str = "Image Plot", fig_size=(15, 20), nrows=1
     plt.show()
 
 
-def annotate_image(
-        image, bounding_boxes, scores, labels, bbox_color=(0, 255, 0), text_color=(255, 255, 255), thickness=1
-):
+def annotate_image(image: np.ndarray,
+                   bounding_boxes: List[Tuple[int, int, int, int]],
+                   scores: List[float],
+                   labels: List[str],
+                   bbox_color: Tuple[int, int, int] = (0, 255, 0),
+                   text_color: Tuple[int, int, int] = (255, 255, 255),
+                   thickness: int = 1) -> np.ndarray:
+    """
+    Annotate an image with bounding boxes, confidence scores, and labels.
+
+    Parameters:
+        - image (np.ndarray): Input image as a NumPy array.
+        - bounding_boxes (List[Tuple[int, int, int, int]]): List of bounding boxes, each represented as (xmin, ymin, xmax, ymax).
+        - scores (List[float]): List of confidence scores.
+        - labels (List[str]): List of labels corresponding to the bounding boxes.
+        - bbox_color (Tuple[int, int, int]): Bounding box color in BGR format (default: (0, 255, 0)).
+        - text_color (Tuple[int, int, int]): Text color in BGR format (default: (255, 255, 255)).
+        - thickness (int): Thickness of the bounding box and text (default: 1).
+
+    Returns:
+        - np.ndarray: Annotated image.
+    """
     for i in range(len(bounding_boxes)):
         bbox = bounding_boxes[i]
         label = labels[i]
