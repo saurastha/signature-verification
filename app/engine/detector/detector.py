@@ -4,7 +4,7 @@ import torch
 
 from ultralytics import YOLO
 
-from app.utils.commons import preprocess_image
+from app.constants.constants import DEVICE
 
 
 class SignDetector:
@@ -35,7 +35,7 @@ class SignDetector:
         """
         self.model = None
         self.detect_threshold = detect_threshold
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = DEVICE
 
     def load(self, model_path: str) -> None:
         """

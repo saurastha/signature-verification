@@ -4,6 +4,7 @@ from torchvision import transforms
 
 from app.models.architectures import DnCNN
 from app.utils.commons import resize_signature
+from app.constants.constants import DEVICE
 
 
 class SignCleaner:
@@ -34,7 +35,7 @@ class SignCleaner:
         self.model = None
         self.transform = transforms.Compose([transforms.ToTensor(),
                                              transforms.Normalize(.5, .5)])
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = DEVICE
 
     def load(self, model_path: str) -> None:
         """

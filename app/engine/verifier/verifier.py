@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 
 from app.models.architectures import SigNet
+from app.constants.constants import DEVICE
 
 
 class SignVerifier:
@@ -35,7 +36,7 @@ class SignVerifier:
         """
         self.model = None
         self.similarity_threshold = similarity_threshold
-        self.device = "mps"
+        self.device = DEVICE
 
     def load(self, model_path: str) -> None:
         """
@@ -84,7 +85,6 @@ class SignVerifier:
             sign_array = np.array([sign1, sign2])
             signatures = torch.from_numpy(sign_array)
             features = self.feature_extraction(signatures)
-            similarity = F.cosine_similarity(features[0], features[1], dim=0)
             distance = torch.norm(features[0] - features[1]).item()
             similarity = (1 - (distance / np.sqrt(features.shape[-1]))) * 100
 
