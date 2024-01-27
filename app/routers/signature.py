@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import os
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from fastapi import FastAPI, APIRouter, File, UploadFile
 from app.utils.commons import preprocess_image, get_image_crops, save_image, preprocess_signature
@@ -72,11 +73,11 @@ async def extract_signature(file: UploadFile = File(...), clean: bool = False):
 async def verify_signature(signature1: UploadFile = File(...), signature2: UploadFile = File(...)):
     content_1 = await signature1.read()
     sign_arr_1 = np.fromstring(content_1, np.uint8)
-    sign_1 = cv2.imdecode(sign_arr_1, cv2.IMREAD_COLOR)
+    sign_1 = cv2.imdecode(sign_arr_1, 0)
 
     content_2 = await signature2.read()
     sign_arr_2 = np.fromstring(content_2, np.uint8)
-    sign_2 = cv2.imdecode(sign_arr_2, cv2.IMREAD_COLOR)
+    sign_2 = cv2.imdecode(sign_arr_2, 0)
 
     preprocessed_sign_1 = preprocess_signature(sign_1)
     preprocessed_sign_2 = preprocess_signature(sign_2)
