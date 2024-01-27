@@ -1,7 +1,10 @@
+from typing import List, Tuple, Union
+
 import cv2
-from typing import Union, List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
+
+from skimage import filters, transform
 
 
 def preprocess_image(img_array: np.ndarray) -> np.ndarray:
@@ -25,29 +28,180 @@ def preprocess_image(img_array: np.ndarray) -> np.ndarray:
     return thresh_img
 
 
-def preprocess_signature(sign_array: np.ndarray) -> np.ndarray:
+def preprocess_signature(
+    img: np.ndarray,
+    canvas_size: Tuple[int, int] = (840, 1360),
+    img_size: Tuple[int, int] = (170, 242),
+    input_size: Tuple[int, int] = (150, 220),
+) -> np.ndarray:
     """
-    Preprocess the input signature image by converting it to grayscale,
-    applying Gaussian blur, thresholding, and resizing.
+    Preprocess a signature image by normalizing, inverting, resizing, and optionally cropping.
 
     Parameters:
-        - sign_array (np.ndarray): Input signature image as a NumPy array.
+        - img (np.ndarray : H x W): Input signature image as a NumPy array.
+        - canvas_size (Tuple[int, int]): Size of the canvas for normalizing the image (default: (840, 1360)).
+        - img_size (Tuple[int, int]): Target size for resizing the image (default: (170, 242)).
+        - input_size (Tuple[int, int]): Target size for cropping the image (default: (150, 220)).
+                                   If None, no cropping is performed.
 
     Returns:
         - np.ndarray: Preprocessed signature image.
     """
-    if len(sign_array.shape) == 3:
-        gray = cv2.cvtColor(sign_array, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, ksize=(1, 1), sigmaX=0)
-        _, binary_image = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-        resized = resize_signature(binary_image, target_height=150, target_width=220)[0]
+    img = img.astype(np.uint8)
+    centered = normalize_image(img, canvas_size)
+    inverted = 255 - centered
+    resized = resize_image(inverted, img_size)
 
-        return resized
+    if input_size is not None and input_size != img_size:
+        cropped = crop_center(resized, input_size)
     else:
-        resized = resize_signature(sign_array, target_height=150, target_width=220)[0]
+        cropped = resized
 
-        return resized
+    return cropped
+
+
+def normalize_image(img: np.ndarray, canvas_size: Tuple[int, int] = (840, 1360)) -> np.ndarray:
+    """
+    Normalize a signature image by cropping, centering, and removing noise.
+
+    Parameters:
+       - img (np.ndarray): Input signature image as a NumPy array.
+       - canvas_size (Tuple[int, int]): Size of the canvas for normalizing the image (default: (840, 1360)).
+
+    Returns:
+        - np.ndarray: Normalized signature image.
+    """
+
+    # 1) Crop the image before getting the center of mass
+
+    # Apply a gaussian filter on the image to remove small components
+    blur_radius = 2
+    blurred_image = filters.gaussian(img, blur_radius, preserve_range=True)
+
+    # Binarize the image using OTSU's algorithm. This is used to find the center
+    # of mass of the image, and find the threshold to remove background noise
+    threshold = filters.threshold_otsu(img)
+
+    # Find the center of mass
+    binarized_image = blurred_image > threshold
+    r, c = np.where(binarized_image == 0)
+    r_center = int(r.mean() - r.min())
+    c_center = int(c.mean() - c.min())
+
+    # Crop the image with a tight box
+    cropped = img[r.min() : r.max(), c.min() : c.max()]
+
+    # 2) Center the image
+    img_rows, img_cols = cropped.shape
+    max_rows, max_cols = canvas_size
+
+    r_start = max_rows // 2 - r_center
+    c_start = max_cols // 2 - c_center
+
+    # Make sure the new image does not go off bounds
+    # Emit a warning if the image needs to be cropped, since we don't want this
+    if img_rows > max_rows:
+        # Case 1: image larger than required (height):  Crop.
+        print("Warning: cropping image. The signature should be smaller than the canvas size")
+        r_start = 0
+        difference = img_rows - max_rows
+        crop_start = difference // 2
+        cropped = cropped[crop_start : crop_start + max_rows, :]
+        img_rows = max_rows
+    else:
+        extra_r = (r_start + img_rows) - max_rows
+        # Case 2: centering exactly would require a larger image. relax the centering of the image
+        if extra_r > 0:
+            r_start -= extra_r
+        if r_start < 0:
+            r_start = 0
+
+    if img_cols > max_cols:
+        # Case 3: image larger than required (width). Crop.
+        print("Warning: cropping image. The signature should be smaller than the canvas size")
+        c_start = 0
+        difference = img_cols - max_cols
+        crop_start = difference // 2
+        cropped = cropped[:, crop_start : crop_start + max_cols]
+        img_cols = max_cols
+    else:
+        # Case 4: centering exactly would require a larger image. relax the centering of the image
+        extra_c = (c_start + img_cols) - max_cols
+        if extra_c > 0:
+            c_start -= extra_c
+        if c_start < 0:
+            c_start = 0
+
+    normalized_image = np.ones((max_rows, max_cols), dtype=np.uint8) * 255
+    # Add the image to the blank canvas
+    normalized_image[r_start : r_start + img_rows, c_start : c_start + img_cols] = cropped
+
+    # Remove noise - anything higher than the threshold. Note that the image is still grayscale
+    normalized_image[normalized_image > threshold] = 255
+
+    return normalized_image
+
+
+def resize_image(img: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
+    """
+    Resize a signature image to a specified size while maintaining the aspect ratio.
+
+    Parameters:
+        - img (np.ndarray): Input signature image as a NumPy array.
+        - size (Tuple[int, int]): Target size for resizing the image.
+
+    Returns:
+        - np.ndarray: Resized signature image.
+    """
+    height, width = size
+
+    # Check which dimension needs to be cropped
+    # (assuming the new height-width ratio may not match the original size)
+    width_ratio = float(img.shape[1]) / width
+    height_ratio = float(img.shape[0]) / height
+    if width_ratio > height_ratio:
+        resize_height = height
+        resize_width = int(round(img.shape[1] / height_ratio))
+    else:
+        resize_width = width
+        resize_height = int(round(img.shape[0] / width_ratio))
+
+    # Resize the image (will still be larger than new_size in one dimension)
+    img = transform.resize(img,
+                           (resize_height, resize_width),
+                           mode="constant",
+                           anti_aliasing=True,
+                           preserve_range=True)
+
+    img = img.astype(np.uint8)
+
+    # Crop to exactly the desired new_size, using the middle of the image:
+    if width_ratio > height_ratio:
+        start = int(round((resize_width - width) / 2.0))
+        return img[:, start : start + width]
+    else:
+        start = int(round((resize_height - height) / 2.0))
+        return img[start : start + height, :]
+
+
+def crop_center(img: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
+    """
+    Crop the center of a signature image to a specified size.
+
+    Parameters:
+        - img (np.ndarray): Input signature image as a NumPy array.
+        - size (Tuple[int, int]): Target size for cropping the image.
+
+    Returns:
+        - np.ndarray: Cropped signature image.
+    """
+
+    img_shape = img.shape
+    start_y = (img_shape[0] - size[0]) // 2
+    start_x = (img_shape[1] - size[1]) // 2
+    cropped = img[start_y : start_y + size[0], start_x : start_x + size[1]]
+    return cropped
 
 
 def save_image(img_array: Union[np.ndarray, List[np.ndarray]], file_name: str) -> List[str]:
@@ -82,89 +236,6 @@ def save_image(img_array: Union[np.ndarray, List[np.ndarray]], file_name: str) -
     return file_paths
 
 
-def resize_with_aspect_ratio(img_array: np.ndarray, target_width: int, target_height: int):
-    """
-    Resize the input image while maintaining its aspect ratio, and pad if necessary.
-
-    Parameters:
-        - img_array (np.ndarray): Input image as a NumPy array.
-        - target_width (int): Target width for resizing.
-        - target_height (int): Target height for resizing.
-
-    Returns:
-        - np.ndarray: Resized and padded image.
-    """
-    # Get the original dimensions of the image
-    original_height, original_width = img_array.shape[:2]
-
-    # Calculate the aspect ratios
-    aspect_ratio_x = target_width / original_width
-    aspect_ratio_y = target_height / original_height
-
-    # Use the minimum aspect ratio to preserve the original aspect ratio
-    min_aspect_ratio = min(aspect_ratio_x, aspect_ratio_y)
-
-    # Calculate the new dimensions
-    new_width = int(original_width * min_aspect_ratio)
-    new_height = int(original_height * min_aspect_ratio)
-
-    # Resize the image
-    resized_image = cv2.resize(img_array, (new_width, new_height))
-
-    pad_height = max(0, target_height - new_height)
-    pad_width = max(0, target_width - new_width)
-
-    # Calculate padding amounts for top, bottom, left, and right
-    top_padding = pad_height // 2
-    bottom_padding = pad_height - top_padding
-
-    left_padding = pad_width // 2
-    right_padding = pad_width - left_padding
-
-    # Pad the image with 255
-    result_image = cv2.copyMakeBorder(
-        resized_image,
-        top_padding,
-        bottom_padding,
-        left_padding,
-        right_padding,
-        cv2.BORDER_CONSTANT,
-        None,
-        value=(255, 255, 255),
-    )
-
-    return result_image
-
-
-def resize_signature(img_array: Union[np.ndarray,List[np.ndarray]],
-                     target_height: int = 150,
-                     target_width: int = 220) -> np.ndarray:
-    """
-    Resize the input signature image or list of signature images.
-
-    Parameters:
-        - img_array: (Union[np.ndarray, List[np.ndarray]]): Input signature image or list of signature images.
-        - target_height (int): Target height for resizing (default: 150).
-        - target_width (int): Target width for resizing (default: 220).
-
-    Returns:
-        - List[np.ndarray]: List of resized and padded signature images.
-    """
-    resized_images = []
-
-    if isinstance(img_array, list) and len(img_array) == 1:
-        img_array = img_array[0]
-
-    if isinstance(img_array, list):
-        for img in img_array:
-            resized = resize_with_aspect_ratio(img, target_width, target_height)
-            resized_images.append(resized)
-    else:
-        resized_images.append(resize_with_aspect_ratio(img_array, target_width, target_height))
-
-    return resized_images
-
-
 def get_image_crops(img_array: np.ndarray, bounding_boxes: List[Tuple[int, int, int, int]]) -> List[np.ndarray]:
     """
     Extract image crops specified by the given bounding boxes.
@@ -186,11 +257,13 @@ def get_image_crops(img_array: np.ndarray, bounding_boxes: List[Tuple[int, int, 
     return crop_holder
 
 
-def plot_images(img_array: Union[np.ndarray, List[np.ndarray]],
-                title: str = "Image Plot",
-                fig_size: Tuple[int, int] = (15, 20),
-                nrows: int = 1,
-                ncols: int = 4):
+def plot_images(
+    img_array: Union[np.ndarray, List[np.ndarray]],
+    title: str = "Image Plot",
+    fig_size: Tuple[int, int] = (15, 20),
+    nrows: int = 1,
+    ncols: int = 4,
+) -> None:
     """
     Plot one or multiple images in a grid.
 
@@ -230,13 +303,15 @@ def plot_images(img_array: Union[np.ndarray, List[np.ndarray]],
     plt.show()
 
 
-def annotate_image(image: np.ndarray,
-                   bounding_boxes: List[Tuple[int, int, int, int]],
-                   scores: List[float],
-                   labels: List[str],
-                   bbox_color: Tuple[int, int, int] = (0, 255, 0),
-                   text_color: Tuple[int, int, int] = (255, 255, 255),
-                   thickness: int = 1) -> np.ndarray:
+def annotate_image(
+    image: np.ndarray,
+    bounding_boxes: List[Tuple[int, int, int, int]],
+    scores: List[float],
+    labels: List[str],
+    bbox_color: Tuple[int, int, int] = (0, 255, 0),
+    text_color: Tuple[int, int, int] = (255, 255, 255),
+    thickness: int = 1,
+) -> np.ndarray:
     """
     Annotate an image with bounding boxes, confidence scores, and labels.
 
