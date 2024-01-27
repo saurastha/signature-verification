@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Path
-from app.routers.extract import router as extract_router, lifespan
+from fastapi import FastAPI
+
+from app.routers.signature import lifespan
+from app.routers.signature import router as extract_router
 
 app = FastAPI(lifespan=lifespan)
 
@@ -9,4 +11,4 @@ async def home():
     return {"Welcome to Signature Verification Project!👋"}
 
 
-app.include_router(extract_router, prefix="/extract", tags=["extract_signature"])
+app.include_router(extract_router, prefix="/signature", tags=["Signature Verification Endpoint"])

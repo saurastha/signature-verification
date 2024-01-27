@@ -2,10 +2,9 @@ from typing import Tuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
-from app.models.architectures import SigNet
 from app.constants.constants import DEVICE
+from app.models.architectures import SigNet
 
 
 class SignVerifier:
@@ -27,7 +26,7 @@ class SignVerifier:
         - verify(sign1, sign2) -> Tuple[float, str]: Verifies the similarity of two signatures and returns the distance and authenticity.
     """
 
-    def __init__(self, similarity_threshold: float = 1.5) -> None:
+    def __init__(self, similarity_threshold: float = 75.0) -> None:
         """
         Initializes a new SignVerifier instance.
 
@@ -88,7 +87,7 @@ class SignVerifier:
             distance = torch.norm(features[0] - features[1]).item()
             similarity = (1 - (distance / np.sqrt(features.shape[-1]))) * 100
 
-            if distance > self.similarity_threshold:
+            if similarity < self.similarity_threshold:
                 return similarity, "Forged"
             else:
                 return similarity, "Genuine"

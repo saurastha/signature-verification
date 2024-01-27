@@ -1,9 +1,10 @@
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 import numpy as np
-from torch import nn
-from abc import ABC, abstractmethod
 import torch.nn.functional as F
+
+from torch import nn
 
 
 # ------------> Signature Verifier Model Architecture <------------
@@ -108,7 +109,6 @@ class NeuralNetwork(nn.Module, ABC):
 
 
 class NNRegressor(NeuralNetwork, ABC):
-
     def __init__(self):
         super(NNRegressor, self).__init__()
         self.mse = nn.MSELoss()
@@ -118,7 +118,6 @@ class NNRegressor(NeuralNetwork, ABC):
 
 
 class DnCNN(NNRegressor):
-
     def __init__(self, D, C=64):
         super(DnCNN, self).__init__()
         self.D = D
@@ -130,7 +129,7 @@ class DnCNN(NNRegressor):
         self.conv.append(nn.Conv2d(C, 3, 3, padding=1))
         # apply He's initialization
         for i in range(len(self.conv[:-1])):
-            nn.init.kaiming_normal_(self.conv[i].weight.data, nonlinearity='relu')
+            nn.init.kaiming_normal_(self.conv[i].weight.data, nonlinearity="relu")
 
         # batch normalization
         self.bn = nn.ModuleList()

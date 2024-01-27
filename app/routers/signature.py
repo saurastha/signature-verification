@@ -1,16 +1,18 @@
 import contextlib
+import os
+
+from pathlib import Path
+
 import cv2
 import numpy as np
-import os
-from pathlib import Path
-import matplotlib.pyplot as plt
 
-from fastapi import FastAPI, APIRouter, File, UploadFile
-from app.utils.commons import preprocess_image, get_image_crops, save_image, preprocess_signature
-from app.engine.detector.detector import SignDetector
+from fastapi import APIRouter, FastAPI, File, UploadFile
+
+from app.constants.constants import SIGN_CLEANER_MODEL_PATH, SIGN_DETECTOR_MODEL_PATH, SIGN_VERIFIER_MODEL_PATH
 from app.engine.cleaner.cleaner import SignCleaner
+from app.engine.detector.detector import SignDetector
 from app.engine.verifier.verifier import SignVerifier
-from app.constants.constants import SIGN_DETECTOR_MODEL_PATH, SIGN_CLEANER_MODEL_PATH, SIGN_VERIFIER_MODEL_PATH
+from app.utils.commons import get_image_crops, preprocess_image, preprocess_signature, save_image
 
 router = APIRouter()
 
@@ -65,8 +67,10 @@ async def extract_signature(file: UploadFile = File(...), clean: bool = False):
     else:
         image_url = save_image(crop_signatures, image_save_path)
 
-    return [{"url": url, "box": bbox, "score": score, "label": label}
-            for url, bbox, score, label in zip(image_url, bboxes, scores, labels)]
+    return [
+        {"url": url, "box": bbox, "score": score, "label": label}
+        for url, bbox, score, label in zip(image_url, bboxes, scores, labels)
+    ]
 
 
 @router.post("/verify")

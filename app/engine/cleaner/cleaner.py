@@ -1,10 +1,11 @@
 import numpy as np
 import torch
+
 from torchvision import transforms
 
+from app.constants.constants import DEVICE
 from app.models.architectures import DnCNN
 from app.utils.commons import resize_signature
-from app.constants.constants import DEVICE
 
 
 class SignCleaner:
@@ -26,6 +27,7 @@ class SignCleaner:
         - post_processing(img: torch.Tensor, threshold: float) -> np.ndarray:
             Post-process the cleaned image.
     """
+
     def __init__(self) -> None:
         """
         Initialize SignCleaner.
@@ -33,8 +35,7 @@ class SignCleaner:
         Sets up the model, transformation pipeline, and device.
         """
         self.model = None
-        self.transform = transforms.Compose([transforms.ToTensor(),
-                                             transforms.Normalize(.5, .5)])
+        self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
         self.device = DEVICE
 
     def load(self, model_path: str) -> None:
