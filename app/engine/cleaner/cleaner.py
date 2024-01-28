@@ -5,7 +5,7 @@ from torchvision import transforms
 
 from app.constants.constants import DEVICE
 from app.models.architectures import DnCNN
-from app.utils.commons import resize_signature
+from app.utils.commons import preprocess_signature
 
 
 class SignCleaner:
@@ -61,7 +61,7 @@ class SignCleaner:
         """
         if self.model:
             self.model.to(self.device)
-            img = resize_signature(image, 220, 220)[0]
+            img = preprocess_signature(image, img_size=(image.shape[0], image.shape[1]), input_size=(220, 220))
             pre_processed_img = self.transform(img)
             img_tensor = pre_processed_img.unsqueeze(dim=0)
 

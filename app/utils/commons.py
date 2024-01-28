@@ -4,7 +4,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-from skimage import filters, transform
+from skimage import filters, transform, color
 
 
 def preprocess_image(img_array: np.ndarray) -> np.ndarray:
@@ -29,10 +29,10 @@ def preprocess_image(img_array: np.ndarray) -> np.ndarray:
 
 
 def preprocess_signature(
-    img: np.ndarray,
-    canvas_size: Tuple[int, int] = (840, 1360),
-    img_size: Tuple[int, int] = (170, 242),
-    input_size: Tuple[int, int] = (150, 220),
+        img: np.ndarray,
+        canvas_size: Tuple[int, int] = (840, 1360),
+        img_size: Tuple[int, int] = (170, 242),
+        input_size: Tuple[int, int] = (150, 220),
 ) -> np.ndarray:
     """
     Preprocess a signature image by normalizing, inverting, resizing, and optionally cropping.
@@ -47,6 +47,12 @@ def preprocess_signature(
     Returns:
         - np.ndarray: Preprocessed signature image.
     """
+
+    if len(img.shape) == 3:
+        try:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        except RuntimeError:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
     img = img.astype(np.uint8)
     centered = normalize_image(img, canvas_size)
@@ -90,7 +96,7 @@ def normalize_image(img: np.ndarray, canvas_size: Tuple[int, int] = (840, 1360))
     c_center = int(c.mean() - c.min())
 
     # Crop the image with a tight box
-    cropped = img[r.min() : r.max(), c.min() : c.max()]
+    cropped = img[r.min(): r.max(), c.min(): c.max()]
 
     # 2) Center the image
     img_rows, img_cols = cropped.shape
@@ -107,7 +113,7 @@ def normalize_image(img: np.ndarray, canvas_size: Tuple[int, int] = (840, 1360))
         r_start = 0
         difference = img_rows - max_rows
         crop_start = difference // 2
-        cropped = cropped[crop_start : crop_start + max_rows, :]
+        cropped = cropped[crop_start: crop_start + max_rows, :]
         img_rows = max_rows
     else:
         extra_r = (r_start + img_rows) - max_rows
@@ -123,7 +129,7 @@ def normalize_image(img: np.ndarray, canvas_size: Tuple[int, int] = (840, 1360))
         c_start = 0
         difference = img_cols - max_cols
         crop_start = difference // 2
-        cropped = cropped[:, crop_start : crop_start + max_cols]
+        cropped = cropped[:, crop_start: crop_start + max_cols]
         img_cols = max_cols
     else:
         # Case 4: centering exactly would require a larger image. relax the centering of the image
@@ -135,7 +141,7 @@ def normalize_image(img: np.ndarray, canvas_size: Tuple[int, int] = (840, 1360))
 
     normalized_image = np.ones((max_rows, max_cols), dtype=np.uint8) * 255
     # Add the image to the blank canvas
-    normalized_image[r_start : r_start + img_rows, c_start : c_start + img_cols] = cropped
+    normalized_image[r_start: r_start + img_rows, c_start: c_start + img_cols] = cropped
 
     # Remove noise - anything higher than the threshold. Note that the image is still grayscale
     normalized_image[normalized_image > threshold] = 255
@@ -179,10 +185,10 @@ def resize_image(img: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
     # Crop to exactly the desired new_size, using the middle of the image:
     if width_ratio > height_ratio:
         start = int(round((resize_width - width) / 2.0))
-        return img[:, start : start + width]
+        return img[:, start: start + width]
     else:
         start = int(round((resize_height - height) / 2.0))
-        return img[start : start + height, :]
+        return img[start: start + height, :]
 
 
 def crop_center(img: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
@@ -200,7 +206,7 @@ def crop_center(img: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
     img_shape = img.shape
     start_y = (img_shape[0] - size[0]) // 2
     start_x = (img_shape[1] - size[1]) // 2
-    cropped = img[start_y : start_y + size[0], start_x : start_x + size[1]]
+    cropped = img[start_y: start_y + size[0], start_x: start_x + size[1]]
     return cropped
 
 
@@ -258,11 +264,11 @@ def get_image_crops(img_array: np.ndarray, bounding_boxes: List[Tuple[int, int, 
 
 
 def plot_images(
-    img_array: Union[np.ndarray, List[np.ndarray]],
-    title: str = "Image Plot",
-    fig_size: Tuple[int, int] = (15, 20),
-    nrows: int = 1,
-    ncols: int = 4,
+        img_array: Union[np.ndarray, List[np.ndarray]],
+        title: str = "Image Plot",
+        fig_size: Tuple[int, int] = (15, 20),
+        nrows: int = 1,
+        ncols: int = 4,
 ) -> None:
     """
     Plot one or multiple images in a grid.
@@ -304,13 +310,13 @@ def plot_images(
 
 
 def annotate_image(
-    image: np.ndarray,
-    bounding_boxes: List[Tuple[int, int, int, int]],
-    scores: List[float],
-    labels: List[str],
-    bbox_color: Tuple[int, int, int] = (0, 255, 0),
-    text_color: Tuple[int, int, int] = (255, 255, 255),
-    thickness: int = 1,
+        image: np.ndarray,
+        bounding_boxes: List[Tuple[int, int, int, int]],
+        scores: List[float],
+        labels: List[str],
+        bbox_color: Tuple[int, int, int] = (0, 255, 0),
+        text_color: Tuple[int, int, int] = (255, 255, 255),
+        thickness: int = 1,
 ) -> np.ndarray:
     """
     Annotate an image with bounding boxes, confidence scores, and labels.

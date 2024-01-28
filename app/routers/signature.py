@@ -44,15 +44,18 @@ router_app = FastAPI(lifespan=lifespan)
 async def extract_signature(file: UploadFile = File(...), clean: bool = False):
     contents = await file.read()
     np_arr = np.fromstring(contents, np.uint8)
-    image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    image_color = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    image_gray = cv2.imdecode(np_arr, 0)
 
-    preprocessed_image = preprocess_image(image.copy())
+    preprocessed_image = preprocess_image(image_color)
 
     # Detect signatures
     bboxes, scores, labels = detector.detect(preprocessed_image)
 
     # Crop the detected signatures
-    crop_signatures = get_image_crops(preprocessed_image, bboxes)
+    crop_signatures = get_image_crops(image_gray, bboxes)
+
+    print(len(crop_signatures))
 
     image_save_path = save_path + "/" + file.filename.split(".")[0]
 
@@ -60,8 +63,6 @@ async def extract_signature(file: UploadFile = File(...), clean: bool = False):
         clean_cropped_signatures = []
         for crop_signature in crop_signatures:
             clean_cropped_signatures.append(cleaner.clean(crop_signature))
-
-        print(clean_cropped_signatures[0].shape)
 
         image_url = save_image(clean_cropped_signatures, image_save_path)
     else:
