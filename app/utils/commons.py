@@ -80,18 +80,20 @@ def normalize_image(img: np.ndarray, canvas_size: Tuple[int, int] = (840, 1360))
     """
 
     # 1) Crop the image before getting the center of mass
-
-    # Apply a gaussian filter on the image to remove small components
-    blur_radius = 2
-    blurred_image = filters.gaussian(img, blur_radius, preserve_range=True)
-
-    # Binarize the image using OTSU's algorithm. This is used to find the center
-    # of mass of the image, and find the threshold to remove background noise
     threshold = filters.threshold_otsu(img)
 
-    # Find the center of mass
-    binarized_image = blurred_image > threshold
+    if threshold != 0:
+        # Apply a gaussian filter on the image to remove small components
+        blur_radius = 2
+        blurred_image = filters.gaussian(img, blur_radius, preserve_range=True)
+
+        # Find the center of mass
+        binarized_image = blurred_image > threshold
+    else:
+        binarized_image = img
+
     r, c = np.where(binarized_image == 0)
+
     r_center = int(r.mean() - r.min())
     c_center = int(c.mean() - c.min())
 
